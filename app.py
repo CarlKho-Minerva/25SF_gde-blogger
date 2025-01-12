@@ -1,10 +1,18 @@
 from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
+from dotenv import load_dotenv
 import os
 
+# Load environment variables from .env file
+load_dotenv()
+
 app = Flask(__name__)
-# Use environment variable with fallback to hardcoded key
+
+# Get API key from environment
 api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("OpenAI API key must be set in .env file")
+
 client = OpenAI(api_key=api_key)
 
 UPLOAD_FOLDER = "uploads"
@@ -50,21 +58,20 @@ def transcribe():
                 file=audio_file,
                 model="whisper-1",
                 response_format="verbose_json",
-                timestamp_granularities=["word"],
+                timestamp_granularities=["word"]
             )
         print("Transcription completed successfully")
         print(f"Raw transcript: {transcript}")
 
         occurrences = []
-        for word in transcript.words:
-            # Access word value using dictionary syntax
-            if word["word"].lower() == magic_word:
+        for word_data in transcript.words:
+            if word_data.word.lower() == magic_word:
                 occurrence = {
-                    "timestamp": word["start"],
-                    "context": f"...{word['word']}...",
+                    "timestamp": word_data.start,
+                    "context": f"...{word_data.word}..."
                 }
                 occurrences.append(occurrence)
-                print(f"Found occurrence at {word['start']}s: {occurrence}")
+                print(f"Found occurrence at {word_data.start}s: {occurrence}")
 
         print(f"Total occurrences found: {len(occurrences)}")
         return jsonify({"occurrences": occurrences, "total": len(occurrences)})
